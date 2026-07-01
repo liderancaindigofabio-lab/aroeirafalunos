@@ -1,12 +1,13 @@
 // ============================================
 // AROEIRA G FITNESS - SITE DOS ALUNOS
-// Lógica de autenticação, perfil, chamados, etc.
+// v2 - designer profissional + persistência
 // ============================================
 
-// === ESTADO GLOBAL ===
 let dados = null;
 let alunoLogado = null;
 let respostasFiltro = {};
+let editAvaliacaoId = null;
+let editChamadoId = null;
 
 // === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// === CARREGAR JSON ===
+// === CARREGAR DADOS (servidor + localStorage) ===
 async function carregarDados() {
     try {
         const resp = await fetch('dados.json');
@@ -24,6 +25,24 @@ async function carregarDados() {
     } catch (e) {
         console.error('Erro ao carregar dados:', e);
         dados = { alunos: [], academia: {}, exercicios: {} };
+    }
+    // Sobrescreve com dados do localStorage (se houver alterações)
+    const local = localStorage.getItem('aroeira_alunos_dados');
+    if (local) {
+        try {
+            const localData = JSON.parse(local);
+            dados.alunos = localData;
+        } catch (e) { console.error('Erro ao parsear localStorage:', e); }
+    }
+}
+
+// === SALVAR NO LOCALSTORAGE (persistência real) ===
+function salvarLocal() {
+    if (!alunoLogado) return;
+    const idx = dados.alunos.findIndex(a => a.id === alunoLogado.id);
+    if (idx >= 0) {
+        dados.alunos[idx] = JSON.parse(JSON.stringify(alunoLogado));
+        localStorage.setItem('aroeira_alunos_dados', JSON.stringify(dados.alunos));
     }
 }
 
@@ -69,7 +88,6 @@ function recuperarSenha(e) {
         return false;
     }
 
-    // Aqui entraria o envio real de e-mail. Por enquanto simula.
     toast(`✅ Link de recuperação enviado para ${email}. Verifique sua caixa de entrada!`);
     closeModal('forgotModal');
     openModal('loginModal');
@@ -88,6 +106,11 @@ function verificarLogin() {
         window.location.href = 'index.html';
         return;
     }
+    // Garante que arrays existem
+    if (!alunoLogado.evaluations) alunoLogado.evaluations = [];
+    if (!alunoLogado.chamados) alunoLogado.chamados = [];
+    if (!alunoLogado.treinos) alunoLogado.treinos = [];
+
     carregarPerfil();
     carregarAvaliacoes();
     carregarChamados();
@@ -130,23 +153,18 @@ function carregarPerfil() {
 
     document.getElementById('perfilNome').textContent = alunoLogado.nome;
     document.getElementById('perfilEmail').textContent = alunoLogado.email;
-    document.getElementById('perfilPlano').textContent = alunoLogado.plano || '-';
-    document.getElementById('perfilValor').textContent = alunoLogado.valor || '-';
-    document.getElementById('perfilVencimento').textContent = alunoLogado.vencimento ? formatarData(alunoLogado.vencimento) : '-';
-    document.getElementById('perfilStatus').innerHTML = badgeStatus(alunoLogado.status);
+    document.getElementById('statPlano').textContent = alunoLogado.plano || '-';
+    document.getElementById('statValor').textContent = alunoLogado.valor || '-';
+    document.getElementById('statVencimento').textContent = alunoLogado.vencimento ? formatarData(alunoLogado.vencimento) : '-';
+    document.getElementById('statStatus').innerHTML = `<span class="badge ${classeStatus(alunoLogado.status)}">${alunoLogado.status || '-'}</span>`;
     document.getElementById('perfilMatricula').textContent = alunoLogado.dataMatricula ? formatarData(alunoLogado.dataMatricula) : '-';
     document.getElementById('perfilObjetivo').textContent = alunoLogado.objetivo || '-';
     document.getElementById('perfilTelefone').textContent = alunoLogado.telefone || '-';
 }
 
-function badgeStatus(st) {
-    const map = {
-        'Em Dia': 'badge-green',
-        'Pendente': 'badge-yellow',
-        'Vencido': 'badge-red',
-        'Atrasado': 'badge-darkred'
-    };
-    return `<span class="badge ${map[st] || 'badge-gold'}">${st}</span>`;
+function classeStatus(st) {
+    const map = { 'Em Dia': 'badge-green', 'Pendente': 'badge-yellow', 'Vencido': 'badge-red', 'Atrasado': 'badge-darkred' };
+    return map[st] || 'badge-gold';
 }
 
 function formatarData(iso) {
@@ -158,8 +176,13 @@ function formatarData(iso) {
 function trocarFoto(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-        toast('❌ Foto muito grande! Máximo 2MB', true);
+    if (file.size > 1 * 1024 * 1024) { // LIMITE 1MB
+        toast('❌ Foto muito grande! Máximo 1MB', true);
+        e.target.value = '';
+        return;
+    }
+    if (!file.type.startsWith('image/')) {
+        toast('❌ Selecione um arquivo de imagem', true);
         return;
     }
     const reader = new FileReader();
@@ -194,27 +217,26 @@ function trocarSenha(e) {
     return false;
 }
 
-// Salva alterações no localStorage (substituir por chamada real à API depois)
-function salvarLocal() {
-    const idx = dados.alunos.findIndex(a => a.id === alunoLogado.id);
-    dados.alunos[idx] = alunoLogado;
-    localStorage.setItem('aroeira_dados', JSON.stringify(dados));
-}
-
 // ============================================
-// CHAMADOS
+// CHAMADOS (com persistência + editar/excluir)
 // ============================================
 function carregarChamados() {
     if (!alunoLogado.chamados) alunoLogado.chamados = [];
     const div = document.getElementById('listaChamados');
     if (alunoLogado.chamados.length === 0) {
-        div.innerHTML = '<p style="opacity:0.5; text-align:center; padding:20px;">Nenhum chamado aberto ainda.</p>';
+        div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhum chamado aberto ainda.</p>';
         return;
     }
-    div.innerHTML = alunoLogado.chamados.map((c, i) => `
-        <div class="avaliacao-item">
-            <div class="data">📌 ${c.assunto} <span class="badge ${c.status === 'Resolvido' ? 'badge-green' : 'badge-yellow'}" style="float:right;">${c.status}</span></div>
-            <div style="font-size:0.85rem; opacity:0.7; margin-bottom:8px;">Aberto em ${formatarData(c.data)}</div>
+    div.innerHTML = alunoLogado.chamados.map(c => `
+        <div class="chamado-item">
+            <div class="assunto">
+                <span>📌 ${escapeHtml(c.assunto)}</span>
+                <div class="avaliacao-actions">
+                    <span class="badge ${c.status === 'Resolvido' ? 'badge-green' : 'badge-yellow'}">${c.status}</span>
+                    <button class="btn btn-danger btn-sm" onclick="excluirChamado(${c.id})" title="Excluir">🗑️</button>
+                </div>
+            </div>
+            <div class="data">Aberto em ${formatarData(c.data)}</div>
             <div class="chat-container" style="height:200px;">
                 <div class="chat-messages">
                     <div class="msg msg-me">${escapeHtml(c.mensagem)}<div class="msg-time">${formatarData(c.data)}</div></div>
@@ -233,7 +255,6 @@ function abrirChamado(e) {
     const mensagem = document.getElementById('chamadoMensagem').value.trim();
     if (!assunto || !mensagem) return false;
 
-    if (!alunoLogado.chamados) alunoLogado.chamados = [];
     alunoLogado.chamados.unshift({
         id: Date.now(),
         assunto,
@@ -249,68 +270,143 @@ function abrirChamado(e) {
     return false;
 }
 
+function excluirChamado(id) {
+    if (!confirm('Excluir este chamado?')) return;
+    alunoLogado.chamados = alunoLogado.chamados.filter(c => c.id !== id);
+    salvarLocal();
+    carregarChamados();
+    toast('🗑️ Chamado excluído');
+}
+
 // ============================================
-// AVALIAÇÃO FÍSICA
+// AVALIAÇÃO FÍSICA (mesmos campos da gestão + editar/excluir)
 // ============================================
 function carregarAvaliacoes() {
-    if (!alunoLogado.avaliacoes) alunoLogado.avaliacoes = [];
+    if (!alunoLogado.evaluations) alunoLogado.evaluations = [];
     const div = document.getElementById('listaAvaliacoes');
-    if (alunoLogado.avaliacoes.length === 0) {
-        div.innerHTML = '<p style="opacity:0.5; text-align:center; padding:20px;">Nenhuma avaliação cadastrada.</p>';
+    if (alunoLogado.evaluations.length === 0) {
+        div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhuma avaliação cadastrada.</p>';
         return;
     }
     // Mais recente primeiro
-    const avs = [...alunoLogado.avaliacoes].sort((a, b) => b.data.localeCompare(a.data));
+    const avs = [...alunoLogado.evaluations].sort((a, b) => b.date.localeCompare(a.date));
     div.innerHTML = avs.map(a => `
         <div class="avaliacao-item">
-            <div class="data">📅 ${formatarData(a.data)}</div>
-            <div class="avaliacao-grid">
-                <div><strong>Peso:</strong> ${a.peso}kg</div>
-                <div><strong>Altura:</strong> ${a.altura}m</div>
-                <div><strong>IMC:</strong> ${a.imc ? a.imc.toFixed(1) : '-'}</div>
-                <div><strong>Gordura:</strong> ${a.gordura}%</div>
-                <div><strong>Músculo:</strong> ${a.musculo}%</div>
-                <div><strong>Braço:</strong> ${a.braco}cm</div>
-                <div><strong>Peito:</strong> ${a.peito}cm</div>
-                <div><strong>Cintura:</strong> ${a.cintura}cm</div>
-                <div><strong>Coxa:</strong> ${a.coxa}cm</div>
+            <div class="data">
+                <span>📅 ${formatarData(a.date)}</span>
+                <div class="avaliacao-actions">
+                    <button class="btn btn-outline btn-sm" onclick="editarAvaliacao(${a.id})">✏️ Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirAvaliacao(${a.id})">🗑️</button>
+                </div>
+            </div>
+            <div class="eval-display-grid">
+                <div class="eval-data-item"><b>Peso</b><span>${a.peso}kg</span></div>
+                ${a.imc ? `<div class="eval-data-item"><b>IMC</b><span>${a.imc}</span></div>` : ''}
+                ${a.gordura ? `<div class="eval-data-item"><b>% Gordura</b><span>${a.gordura}%</span></div>` : ''}
+                ${a.massa ? `<div class="eval-data-item"><b>Massa Magra</b><span>${a.massa}</span></div>` : ''}
+                ${a.busto ? `<div class="eval-data-item"><b>Busto</b><span>${a.busto}cm</span></div>` : ''}
+                ${a.cintura ? `<div class="eval-data-item"><b>Cintura</b><span>${a.cintura}cm</span></div>` : ''}
+                ${a.barriga ? `<div class="eval-data-item"><b>Barriga</b><span>${a.barriga}cm</span></div>` : ''}
+                ${a.quadril ? `<div class="eval-data-item"><b>Quadril</b><span>${a.quadril}cm</span></div>` : ''}
+                ${a.perna ? `<div class="eval-data-item"><b>Perna</b><span>${a.perna}cm</span></div>` : ''}
+                ${a.braco ? `<div class="eval-data-item"><b>Braço</b><span>${a.braco}cm</span></div>` : ''}
+                ${a.visceral ? `<div class="eval-data-item"><b>Visceral</b><span>${a.visceral}</span></div>` : ''}
+                ${a.basal ? `<div class="eval-data-item"><b>Metab. Basal</b><span>${a.basal}</span></div>` : ''}
+                ${a.idade ? `<div class="eval-data-item"><b>Idade Metab.</b><span>${a.idade}</span></div>` : ''}
             </div>
         </div>
     `).join('');
 }
 
-function adicionarAvaliacao(e) {
+function salvarAvaliacao(e) {
     e.preventDefault();
-    const peso = parseFloat(document.getElementById('avPeso').value);
-    const altura = parseFloat(document.getElementById('avAltura').value);
-    const imc = peso / (altura * altura);
-
-    const av = {
-        data: document.getElementById('avData').value,
-        peso,
-        altura,
-        imc,
-        gordura: parseFloat(document.getElementById('avGordura').value),
-        musculo: parseFloat(document.getElementById('avMusculo').value),
-        braco: parseFloat(document.getElementById('avBraco').value),
-        peito: parseFloat(document.getElementById('avPeito').value),
-        cintura: parseFloat(document.getElementById('avCintura').value),
-        coxa: parseFloat(document.getElementById('avCoxa').value)
+    const data = {
+        date: document.getElementById('av_date').value,
+        peso: parseFloat(document.getElementById('av_peso').value) || null,
+        imc: parseFloat(document.getElementById('av_imc').value) || null,
+        busto: parseFloat(document.getElementById('av_busto').value) || null,
+        cintura: parseFloat(document.getElementById('av_cintura').value) || null,
+        barriga: parseFloat(document.getElementById('av_barriga').value) || null,
+        quadril: parseFloat(document.getElementById('av_quadril').value) || null,
+        perna: parseFloat(document.getElementById('av_perna').value) || null,
+        braco: parseFloat(document.getElementById('av_braco').value) || null,
+        gordura: parseFloat(document.getElementById('av_gordura').value) || null,
+        massa: parseFloat(document.getElementById('av_massa').value) || null,
+        visceral: parseFloat(document.getElementById('av_visceral').value) || null,
+        basal: parseFloat(document.getElementById('av_basal').value) || null,
+        idade: parseFloat(document.getElementById('av_idade').value) || null
     };
-    if (!alunoLogado.avaliacoes) alunoLogado.avaliacoes = [];
-    alunoLogado.avaliacoes.push(av);
+
+    if (editAvaliacaoId) {
+        // EDITAR
+        const idx = alunoLogado.evaluations.findIndex(a => a.id === editAvaliacaoId);
+        if (idx >= 0) {
+            alunoLogado.evaluations[idx] = { ...alunoLogado.evaluations[idx], ...data };
+            toast('✅ Avaliação atualizada!');
+        }
+        editAvaliacaoId = null;
+        document.getElementById('avFormTitulo').textContent = 'Adicionar avaliação';
+        document.getElementById('avSubmitBtn').textContent = '💾 Salvar avaliação';
+        document.getElementById('avCancelarBtn').classList.add('hidden');
+    } else {
+        // ADICIONAR NOVA
+        data.id = Date.now();
+        alunoLogado.evaluations.push(data);
+        toast('✅ Avaliação salva! A gestão recebeu a atualização.');
+    }
+
     salvarLocal();
     carregarAvaliacoes();
-    toast('✅ Avaliação salva! A gestão recebeu a atualização.');
     e.target.reset();
     return false;
 }
 
+function editarAvaliacao(id) {
+    const a = alunoLogado.evaluations.find(x => x.id === id);
+    if (!a) return;
+
+    document.getElementById('av_date').value = a.date || '';
+    document.getElementById('av_peso').value = a.peso || '';
+    document.getElementById('av_busto').value = a.busto || '';
+    document.getElementById('av_cintura').value = a.cintura || '';
+    document.getElementById('av_barriga').value = a.barriga || '';
+    document.getElementById('av_quadril').value = a.quadril || '';
+    document.getElementById('av_perna').value = a.perna || '';
+    document.getElementById('av_braco').value = a.braco || '';
+    document.getElementById('av_imc').value = a.imc || '';
+    document.getElementById('av_gordura').value = a.gordura || '';
+    document.getElementById('av_massa').value = a.massa || '';
+    document.getElementById('av_visceral').value = a.visceral || '';
+    document.getElementById('av_basal').value = a.basal || '';
+    document.getElementById('av_idade').value = a.idade || '';
+
+    editAvaliacaoId = id;
+    document.getElementById('avFormTitulo').textContent = 'Editar avaliação';
+    document.getElementById('avSubmitBtn').textContent = '💾 Atualizar avaliação';
+    document.getElementById('avCancelarBtn').classList.remove('hidden');
+    document.getElementById('av_date').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelarEdicaoAvaliacao() {
+    editAvaliacaoId = null;
+    document.getElementById('avFormTitulo').textContent = 'Adicionar avaliação';
+    document.getElementById('avSubmitBtn').textContent = '💾 Salvar avaliação';
+    document.getElementById('avCancelarBtn').classList.add('hidden');
+    document.querySelector('#avaliacao form').reset();
+}
+
+function excluirAvaliacao(id) {
+    if (!confirm('Excluir esta avaliação?')) return;
+    alunoLogado.evaluations = alunoLogado.evaluations.filter(a => a.id !== id);
+    salvarLocal();
+    carregarAvaliacoes();
+    toast('🗑️ Avaliação excluída');
+}
+
 // ============================================
-// GERADOR DE TREINO
+// GERADOR DE TREINO (um dia por vez)
 // ============================================
 function selecionarOpcao(el, campo, valor) {
-    // desseleciona irmãos
     el.parentElement.querySelectorAll('.opcao').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
     respostasFiltro[campo] = valor;
@@ -318,149 +414,146 @@ function selecionarOpcao(el, campo, valor) {
 
 function gerarTreino() {
     const f = respostasFiltro;
-    if (!f.experiencia || !f.objetivo || !f.frequencia || !f.genero) {
+    if (!f.experiencia || !f.objetivo || !f.frequencia || !f.grupo || !f.genero) {
         toast('❌ Responda todas as perguntas!', true);
         return;
     }
-    f.limitacao = document.getElementById('limitacao').value.trim();
     f.dataGeracao = new Date().toISOString().split('T')[0];
 
     const treino = montarTreino(f);
 
-    if (!alunoLogado.treinos) alunoLogado.treinos = [];
-    alunoLogado.treinos.unshift({ id: Date.now(), filtros: { ...f }, dias: treino });
+    alunoLogado.treinos.unshift({
+        id: Date.now(),
+        filtros: JSON.parse(JSON.stringify(f)),
+        exercicios: treino
+    });
     salvarLocal();
 
-    document.getElementById('filtrosTreino').style.display = 'none';
-    document.getElementById('resultadoTreino').style.display = 'block';
+    document.getElementById('filtrosTreino').classList.add('hidden');
+    document.getElementById('resultadoTreino').classList.remove('hidden');
     renderizarTreino(treino, f);
     carregarTreinos();
-    toast('🔥 Treino gerado com sucesso!');
+    toast('🔥 Treino de hoje gerado!');
 }
 
 function montarTreino(f) {
-    const ex = dados.exercicios;
-    const fem = f.genero === 'f';
+    const ex = dados.exercicios || {};
+    const grupo = f.grupo;
+    let exercicios = [...(ex[grupo] || [])];
+
+    // Ajustes por experiência
     const isIniciante = f.experiencia === 'iniciante';
-    const isEmagrecer = f.objetivo === 'emagrecimento';
-    const isResistencia = f.objetivo === 'resistencia';
-
-    let dias = [];
-
-    if (f.frequencia === 3) {
-        dias = [
-            { nome: 'Treino A - Peito, Ombro e Tríceps', grupos: ['peito', 'ombros', 'bracos'] },
-            { nome: 'Treino B - Costas e Bíceps', grupos: ['costas', 'bracos'] },
-            { nome: 'Treino C - Pernas e Glúteos', grupos: fem ? ['gluteos', 'pernas'] : ['pernas', 'gluteos'] }
-        ];
-    } else if (f.frequencia === 4) {
-        dias = [
-            { nome: 'Treino A - Peito e Tríceps', grupos: ['peito', 'bracos'] },
-            { nome: 'Treino B - Costas e Bíceps', grupos: ['costas', 'bracos'] },
-            { nome: 'Treino C - Pernas', grupos: ['pernas'] },
-            { nome: 'Treino D - Ombros, Glúteos e Core', grupos: ['ombros', 'gluteos', 'core'] }
-        ];
-    } else {
-        dias = [
-            { nome: 'Treino A - Peito', grupos: ['peito'] },
-            { nome: 'Treino B - Costas', grupos: ['costas'] },
-            { nome: 'Treino C - Pernas', grupos: ['pernas'] },
-            { nome: 'Treino D - Ombros e Braços', grupos: ['ombros', 'bracos'] },
-            { nome: 'Treino E - Glúteos, Core e Cardio', grupos: ['gluteos', 'core', 'cardio'] }
-        ];
-    }
-
     if (isIniciante) {
-        dias.forEach(d => d.grupos = d.grupos.slice(0, 2));
-    }
-
-    if (isEmagrecer || isResistencia) {
-        dias.forEach(d => {
-            if (!d.grupos.includes('cardio')) d.grupos.push('cardio');
+        exercicios = exercicios.slice(0, 4); // menos exercícios
+        exercicios.forEach(e => {
+            if (e.series.includes('x')) {
+                const [qtd, reps] = e.series.split('x');
+                e.series = `3x${reps}`;
+            }
         });
     }
 
-    // Monta exercícios de cada dia
-    dias.forEach(dia => {
-        dia.exercicios = [];
-        dia.grupos.forEach(g => {
-            const lista = ex[g] || [];
-            lista.forEach(e => dia.exercicios.push({ ...e, grupo: g }));
-        });
-        // Ajusta séries pra iniciantes
-        if (isIniciante) {
-            dia.exercicios.forEach(e => {
-                if (e.series.includes('x')) {
-                    const [qtd, reps] = e.series.split('x');
-                    e.series = `3x${reps}`;
-                }
-            });
+    // Ajustes por objetivo
+    if (f.objetivo === 'emagrecimento' || f.objetivo === 'resistencia') {
+        if (ex.cardio) {
+            exercicios.push({ nome: 'Cardio (final do treino)', aparelho: 'Esteira ou Bicicleta', series: '15-20 min', descanso: '-', grupo: 'cardio' });
         }
-    });
+    }
 
-    return dias;
+    return exercicios;
 }
 
-function renderizarTreino(dias, f) {
+function renderizarTreino(exercicios, f) {
+    const grupoNomes = {
+        peito: 'Peito', costas: 'Costas', pernas: 'Pernas', gluteos: 'Glúteos',
+        ombros: 'Ombros', bracos: 'Braços', core: 'Core/Abdômen', cardio: 'Cardio'
+    };
     const objetivoTxt = {
-        hipertrofia: '💪 Ganho de massa',
-        emagrecimento: '🔥 Emagrecimento',
-        resistencia: '⚡ Resistência',
-        forca: '💪 Força'
+        hipertrofia: '💪 Ganho de massa', emagrecimento: '🔥 Emagrecimento',
+        resistencia: '⚡ Resistência', forca: '💪 Força'
     };
     const expTxt = {
-        iniciante: '🆕 Iniciante',
-        intermediario: '🔄 Intermediário',
-        avancado: '💪 Avançado'
+        iniciante: '🆕 Iniciante', intermediario: '🔄 Intermediário', avancado: '💪 Avançado'
     };
-    const freqTxt = `${f.frequencia}x por semana`;
 
     let html = `
         <div class="card">
-            <h3>🎯 Seu Treino Personalizado</h3>
+            <div class="card-header"><h3>🎯 Treino de ${grupoNomes[f.grupo]}</h3></div>
             <div class="info-row"><strong>Experiência:</strong> <span>${expTxt[f.experiencia]}</span></div>
             <div class="info-row"><strong>Objetivo:</strong> <span>${objetivoTxt[f.objetivo]}</span></div>
-            <div class="info-row"><strong>Frequência:</strong> <span>${freqTxt}</span></div>
-            ${f.limitacao ? `<div class="info-row"><strong>⚠️ Limitação:</strong> <span>${escapeHtml(f.limitacao)}</span></div>` : ''}
+            <div class="info-row"><strong>Frequência:</strong> <span>${f.frequencia}x por semana</span></div>
             <div class="info-row"><strong>Gerado em:</strong> <span>${formatarData(f.dataGeracao)}</span></div>
         </div>
+        <div class="card">
+            <div class="card-header"><h3>🏋️ Exercícios do dia</h3></div>
+            ${exercicios.map((e, i) => `
+                <div class="exercicio-card">
+                    <div class="nome">${i + 1}. ${e.nome}</div>
+                    <div class="detalhes">
+                        <span>🔁 ${e.series}</span>
+                        <span>⏱️ ${e.descanso}</span>
+                        <span>🏋️ ${e.aparelho}</span>
+                    </div>
+                    <div class="grupo-musculer">💪 ${grupoNomes[e.grupo] || e.grupo}</div>
+                </div>
+            `).join('')}
+        </div>
+        <button class="btn btn-outline btn-block" onclick="novoTreino()">🔄 Gerar treino de outro dia</button>
     `;
 
-    dias.forEach((d, i) => {
-        html += `
-            <div class="treino-dia">
-                <h4>📅 ${d.nome}</h4>
-                ${d.exercicios.map(e => `
-                    <div class="exercicio-card">
-                        <div class="nome">${e.nome}</div>
-                        <div class="detalhes">🔁 ${e.series} • ⏱️ Descanso: ${e.descanso} • 🏋️ ${e.aparelho}</div>
-                        <div class="grupo-musculer">💪 ${e.grupo}</div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    });
-
-    html += `<button class="btn mt-20" onclick="document.getElementById('resultadoTreino').style.display='none'; document.getElementById('filtrosTreino').style.display='block';">🔄 Gerar novo treino</button>`;
-
     document.getElementById('resultadoTreino').innerHTML = html;
+}
+
+function novoTreino() {
+    respostasFiltro = {};
+    document.querySelectorAll('.opcao.selected').forEach(o => o.classList.remove('selected'));
+    document.getElementById('resultadoTreino').classList.add('hidden');
+    document.getElementById('filtrosTreino').classList.remove('hidden');
+    document.getElementById('filtrosTreino').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function carregarTreinos() {
     if (!alunoLogado.treinos) alunoLogado.treinos = [];
     const div = document.getElementById('listaTreinos');
     if (alunoLogado.treinos.length === 0) {
-        div.innerHTML = '<p style="opacity:0.5; text-align:center; padding:20px;">Nenhum treino gerado ainda.</p>';
+        div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhum treino gerado ainda.</p>';
         return;
     }
+    const grupoNomes = {
+        peito: 'Peito', costas: 'Costas', pernas: 'Pernas', gluteos: 'Glúteos',
+        ombros: 'Ombros', bracos: 'Braços', core: 'Core', cardio: 'Cardio'
+    };
     div.innerHTML = alunoLogado.treinos.map(t => `
         <div class="avaliacao-item">
-            <div class="data">🏋️ Treino gerado em ${formatarData(t.filtros.dataGeracao)} <span class="badge badge-gold">${t.dias.length} dias</span></div>
-            <div style="font-size:0.85rem; opacity:0.7;">
-                ${t.filtros.frequencia}x/semana • ${t.filtros.objetivo} • ${t.filtros.experiencia}
+            <div class="data">
+                <span>🏋️ ${grupoNomes[t.filtros.grupo] || t.filtros.grupo} — ${formatarData(t.filtros.dataGeracao)}</span>
+                <div class="avaliacao-actions">
+                    <button class="btn btn-outline btn-sm" onclick="verTreino(${t.id})">👁️ Ver</button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirTreino(${t.id})">🗑️</button>
+                </div>
+            </div>
+            <div style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">
+                ${t.exercicios.length} exercícios • ${t.filtros.objetivo} • ${t.filtros.experiencia}
             </div>
         </div>
     `).join('');
+}
+
+function verTreino(id) {
+    const t = alunoLogado.treinos.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('filtrosTreino').classList.add('hidden');
+    document.getElementById('resultadoTreino').classList.remove('hidden');
+    renderizarTreino(t.exercicios, t.filtros);
+    document.getElementById('resultadoTreino').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function excluirTreino(id) {
+    if (!confirm('Excluir este treino do histórico?')) return;
+    alunoLogado.treinos = alunoLogado.treinos.filter(t => t.id !== id);
+    salvarLocal();
+    carregarTreinos();
+    toast('🗑️ Treino excluído');
 }
 
 // ============================================
@@ -468,16 +561,9 @@ function carregarTreinos() {
 // ============================================
 function enviarContato(e) {
     e.preventDefault();
-    const dados_form = new FormData(e.target);
-    const msg = `
-        <strong>Nova mensagem de contato:</strong><br>
-        Nome: ${dados_form.get('nome')}<br>
-        E-mail: ${dados_form.get('email')}<br>
-        Telefone: ${dados_form.get('telefone') || 'não informado'}<br>
-        Mensagem: ${dados_form.get('mensagem')}
-    `;
+    const fd = new FormData(e.target);
+    console.log('Contato:', Object.fromEntries(fd));
     toast('✅ Mensagem enviada! Responderemos em breve.');
-    console.log('Contato:', msg);
     e.target.reset();
     return false;
 }
@@ -486,8 +572,6 @@ function enviarContato(e) {
 function escapeHtml(t) {
     if (!t) return '';
     return String(t)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
