@@ -120,6 +120,14 @@ header {
 }
 .btn-outline:hover { background: var(--gold); color: #000; }
 
+.btn-gold {
+    background: var(--gold);
+    color: #000;
+    border: 1.5px solid var(--gold);
+    box-shadow: 0 2px 8px rgba(212,175,55,0.25);
+}
+.btn-gold:hover { background: #e6c14d; border-color: #e6c14d; }
+
 .btn-wpp {
     background: #25d366;
     color: #fff;
