@@ -1,127 +1,163 @@
 // ============================================
 // AROEIRA G FITNESS - SITE DOS ALUNOS
-// v3 - CORRIGIDO: async/await, 0 não vira null
+// v4 - CONECTADO ao banco real da gestão
 // ============================================
 
-let dados = null;
-let alunoLogado = null;
+// === CONFIGURAÇÃO: URL do banco de dados da gestão ===
+const GESTAO_JSON_URL = 'https://raw.githubusercontent.com/liderancaindigofabio-lab/aroeiragfitness/main/aroeira_data.json';
+const LS_OVERRIDES = 'aroeira_overrides_v1';       // alteracoes feitas pelo aluno (local)
+const LS_AUTH = 'aroeira_aluno_id_v1';             // id do aluno logado
+const LS_LOCAL_RECS = 'aroeira_local_records_v1';  // registros criados pelo aluno que ainda nao foram sincronizados
+
+let gestaoData = null;      // banco da gestao (carregado do GitHub)
+let alunosGest = [];        // lista de students
+let alunoLogado = null;     // aluno atualmente logado (objeto)
 let respostasFiltro = {};
 let editAvaliacaoId = null;
 
 // === INICIALIZAÇÃO ===
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('[AGF] DOMContentLoaded - iniciando...');
-    await carregarDados();
-    console.log('[AGF] dados carregados. Alunos:', dados.alunos.length);
+    console.log('[AGF] Iniciando portal v4 - conectado a gestao');
+    await carregarDadosGestao();
     if (window.location.pathname.includes('dashboard')) {
         verificarLogin();
     }
 });
 
-// === CARREGAR DADOS ===
-async function carregarDados() {
+// === CARREGAR DADOS DA GESTAO (raw GitHub, com CORS liberado) ===
+async function carregarDadosGestao() {
     try {
-        const resp = await fetch('dados.json?v=' + Date.now());
+        const resp = await fetch(GESTAO_JSON_URL + '?t=' + Date.now());
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        dados = await resp.json();
-        console.log('[AGF] dados.json carregado');
+        gestaoData = await resp.json();
+        alunosGest = gestaoData.students || [];
+        console.log('[AGF] Gestao carregada:', alunosGest.length, 'alunos');
+
+        // Aplica overrides locais do aluno (alteracoes que ainda nao voltaram pra gestao)
+        aplicarOverridesLocais();
     } catch (e) {
-        console.error('[AGF] Erro ao carregar dados.json:', e);
-        // Fallback: tentar sem cache-buster
-        try {
-            const resp2 = await fetch('dados.json');
-            dados = await resp2.json();
-        } catch (e2) {
-            console.error('[AGF] Erro fatal ao carregar dados:', e2);
-            dados = { alunos: [], academia: {}, exercicios: {} };
-        }
-    }
-    // Sobrescreve com dados do localStorage
-    const local = localStorage.getItem('aroeira_alunos_dados');
-    if (local) {
-        try {
-            const localData = JSON.parse(local);
-            if (Array.isArray(localData) && localData.length > 0) {
-                dados.alunos = localData;
-                console.log('[AGF] localStorage aplicado:', localData.length, 'alunos');
-            }
-        } catch (e) { console.error('[AGF] Erro ao parsear localStorage:', e); }
+        console.error('[AGF] Erro ao carregar gestao:', e);
+        toast('⚠️ Não foi possível carregar a base da gestão. Verifique sua internet.', true);
+        gestaoData = { students: [], history: [], password: '123456' };
+        alunosGest = [];
     }
 }
 
-// === SALVAR NO LOCALSTORAGE ===
-function salvarLocal() {
-    if (!alunoLogado) {
-        console.warn('[AGF] salvarLocal: alunoLogado é null');
-        return;
-    }
-    const idx = dados.alunos.findIndex(a => a.id === alunoLogado.id);
-    if (idx >= 0) {
-        dados.alunos[idx] = JSON.parse(JSON.stringify(alunoLogado));
-        localStorage.setItem('aroeira_alunos_dados', JSON.stringify(dados.alunos));
-        console.log('[AGF] Salvo no localStorage. Aluno id:', alunoLogado.id);
-    } else {
-        console.warn('[AGF] Aluno não encontrado em dados.alunos. Adicionando...');
-        dados.alunos.push(JSON.parse(JSON.stringify(alunoLogado)));
-        localStorage.setItem('aroeira_alunos_dados', JSON.stringify(dados.alunos));
-    }
+// === OVERRIDES LOCAIS (aluno pode editar dados que a gestao ainda nao absorveu) ===
+function aplicarOverridesLocais() {
+    const ovr = JSON.parse(localStorage.getItem(LS_OVERRIDES) || '{}');
+    alunosGest = alunosGest.map(a => {
+        if (ovr[a.id]) return { ...a, ...ovr[a.id] };
+        return a;
+    });
 }
 
-// === HELPER: número seguro (0 não vira null) ===
+function salvarOverrideLocal(alunoId, patch) {
+    const ovr = JSON.parse(localStorage.getItem(LS_OVERRIDES) || '{}');
+    ovr[alunoId] = { ...(ovr[alunoId] || {}), ...patch };
+    localStorage.setItem(LS_OVERRIDES, JSON.stringify(ovr));
+}
+
+// === REGISTROS LOCAIS (chamados, treinos - coisas que nao vao pra gestao automaticamente) ===
+function getLocalRecords() {
+    return JSON.parse(localStorage.getItem(LS_LOCAL_RECS) || '{}');
+}
+function saveLocalRecord(alunoId, key, data) {
+    const all = getLocalRecords();
+    if (!all[alunoId]) all[alunoId] = {};
+    all[alunoId][key] = data;
+    localStorage.setItem(LS_LOCAL_RECS, JSON.stringify(all));
+}
+function getAlunoLocal(alunoId) {
+    return getLocalRecords()[alunoId] || {};
+}
+
+// === HELPERS ===
 function numOrNull(v) {
     if (v === '' || v === null || v === undefined) return null;
     const n = parseFloat(v);
     return isNaN(n) ? null : n;
 }
 
-// === MODAIS ===
-function openModal(id) {
-    const m = document.getElementById(id);
-    if (m) m.classList.add('show');
-}
-function closeModal(id) {
-    const m = document.getElementById(id);
-    if (m) m.classList.remove('show');
-}
+function openModal(id) { document.getElementById(id)?.classList.add('show'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('show'); }
 
-// === TOAST ===
 function toast(msg, erro = false) {
     const t = document.createElement('div');
     t.className = 'toast' + (erro ? ' error' : '');
     t.innerHTML = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    setTimeout(() => t.remove(), 4500);
+}
+
+function setText(id, txt) { const el = document.getElementById(id); if (el) el.textContent = txt; }
+function setHTML(id, h) { const el = document.getElementById(id); if (el) el.innerHTML = h; }
+
+function formatarData(iso) {
+    if (!iso) return '-';
+    const [y, m, d] = iso.split('-');
+    return d + '/' + m + '/' + y;
+}
+
+function classeStatus(st) {
+    const map = { 'Em Dia': 'badge-green', 'Pendente': 'badge-yellow', 'Vencido': 'badge-red', 'Atrasado': 'badge-darkred' };
+    return map[st] || 'badge-gold';
+}
+
+function escapeHtml(t) {
+    if (t === null || t === undefined) return '';
+    return String(t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// === MAPEAMENTO: gestao (english) <-> aluno (portugues) ===
+function mapGestaoToAluno(s) {
+    if (!s) return null;
+    return {
+        id: s.id,
+        nome: s.name || s.nome || 'Aluno',
+        email: s.email || '',
+        telefone: s.phone || s.telefone || '',
+        senha: '123456', // senha padrao para todos os alunos
+        plano: s.plan || s.plano || '-',
+        valor: s.value || s.valor || '-',
+        vencimento: s.due || s.vencimento || '',
+        status: s.payment || s.status || 'Em Dia',
+        dataMatricula: s.matricula || '',
+        objetivo: '-',
+        foto: '',
+        evaluations: s.evaluations || [],
+        paymentHistory: s.paymentHistory || []
+    };
 }
 
 // ============================================
-// LOGIN / LOGOUT
+// LOGIN
 // ============================================
 async function fazerLogin(e) {
     if (e && e.preventDefault) e.preventDefault();
-    // Garante que dados carregou
-    if (!dados || !dados.alunos) await carregarDados();
+    if (!gestaoData) await carregarDadosGestao();
 
     const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
     const senha = document.getElementById('loginSenha')?.value || '';
 
-    if (!email || !senha) {
-        toast('❌ Preencha e-mail e senha', true);
+    if (!email || !senha) { toast('❌ Preencha e-mail e senha', true); return false; }
+
+    console.log('[AGF] Login:', email);
+    const alunoRaw = alunosGest.find(a => (a.email || '').toLowerCase() === email);
+    if (!alunoRaw) {
+        toast('❌ E-mail não encontrado na gestão. Procure a recepção.', true);
+        return false;
+    }
+    if (senha !== '123456') {
+        toast('❌ Senha incorreta. Use a senha padrão: 123456', true);
         return false;
     }
 
-    console.log('[AGF] Tentando login:', email);
-    const aluno = dados.alunos.find(a =>
-        (a.email || '').toLowerCase() === email && a.senha === senha
-    );
-
-    if (!aluno) {
-        console.log('[AGF] Login falhou. Alunos disponíveis:', dados.alunos.map(a => a.email));
-        toast('❌ E-mail ou senha inválidos', true);
-        return false;
-    }
-
-    console.log('[AGF] Login OK. Redirecionando...');
-    localStorage.setItem('aroeira_aluno_id', aluno.id);
+    alunoLogado = mapGestaoToAluno(alunoRaw);
+    localStorage.setItem(LS_AUTH, String(alunoLogado.id));
+    console.log('[AGF] Login OK:', alunoLogado.nome);
     window.location.href = 'dashboard.html';
     return false;
 }
@@ -129,38 +165,42 @@ async function fazerLogin(e) {
 function recuperarSenha(e) {
     if (e && e.preventDefault) e.preventDefault();
     const email = (document.getElementById('forgotEmail')?.value || '').trim().toLowerCase();
-    if (!dados) { toast('❌ Sistema carregando, tente novamente', true); return false; }
-    const aluno = dados.alunos.find(a => (a.email || '').toLowerCase() === email);
-    if (!aluno) { toast('❌ E-mail não encontrado no sistema', true); return false; }
-    toast('✅ Link de recuperação enviado para ' + email);
+    const alunoRaw = alunosGest.find(a => (a.email || '').toLowerCase() === email);
+    if (!alunoRaw) { toast('❌ E-mail não encontrado', true); return false; }
+    toast('✅ Sua senha padrão é: 123456 (entre em contato com a gestão para alterar)');
     closeModal('forgotModal');
     openModal('loginModal');
     return false;
 }
 
 function verificarLogin() {
-    const id = localStorage.getItem('aroeira_aluno_id');
+    const id = localStorage.getItem(LS_AUTH);
     if (!id) { window.location.href = 'index.html'; return; }
-    alunoLogado = dados.alunos.find(a => a.id == id);
-    if (!alunoLogado) {
-        localStorage.removeItem('aroeira_aluno_id');
-        window.location.href = 'index.html';
-        return;
-    }
-    if (!alunoLogado.evaluations) alunoLogado.evaluations = [];
-    if (!alunoLogado.chamados) alunoLogado.chamados = [];
-    if (!alunoLogado.treinos) alunoLogado.treinos = [];
+    // Recarrega dados da gestao
+    carregarDadosGestao().then(() => {
+        const alunoRaw = alunosGest.find(a => String(a.id) === String(id));
+        if (!alunoRaw) {
+            localStorage.removeItem(LS_AUTH);
+            window.location.href = 'index.html';
+            return;
+        }
+        alunoLogado = mapGestaoToAluno(alunoRaw);
+        const local = getAlunoLocal(alunoLogado.id);
+        if (!alunoLogado.evaluations) alunoLogado.evaluations = [];
+        if (!alunoLogado.chamados) alunoLogado.chamados = local.chamados || [];
+        if (!alunoLogado.treinos) alunoLogado.treinos = local.treinos || [];
 
-    console.log('[AGF] Aluno logado:', alunoLogado.nome);
-    carregarPerfil();
-    carregarAvaliacoes();
-    carregarChamados();
-    carregarTreinos();
+        console.log('[AGF] Dashboard:', alunoLogado.nome);
+        carregarPerfil();
+        carregarAvaliacoes();
+        carregarChamados();
+        carregarTreinos();
+    });
 }
 
 function logout() {
     if (confirm('Sair da sua conta?')) {
-        localStorage.removeItem('aroeira_aluno_id');
+        localStorage.removeItem(LS_AUTH);
         window.location.href = 'index.html';
     }
 }
@@ -169,8 +209,7 @@ function logout() {
 function abrirTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    const tab = document.getElementById(tabId);
-    if (tab) tab.classList.add('active');
+    document.getElementById(tabId)?.classList.add('active');
     if (btn) btn.classList.add('active');
 }
 
@@ -191,45 +230,24 @@ function carregarPerfil() {
     }
     setText('perfilNome', alunoLogado.nome);
     setText('perfilEmail', alunoLogado.email);
-    setText('statPlano', alunoLogado.plano || '-');
-    setText('statValor', alunoLogado.valor || '-');
+    setText('statPlano', alunoLogado.plano);
+    setText('statValor', alunoLogado.valor);
     setText('statVencimento', alunoLogado.vencimento ? formatarData(alunoLogado.vencimento) : '-');
-    setHTML('statStatus', '<span class="badge ' + classeStatus(alunoLogado.status) + '">' + (alunoLogado.status || '-') + '</span>');
-    setText('perfilMatricula', alunoLogado.dataMatricula ? formatarData(alunoLogado.dataMatricula) : '-');
+    setHTML('statStatus', '<span class="badge ' + classeStatus(alunoLogado.status) + '">' + alunoLogado.status + '</span>');
+    setText('perfilMatricula', alunoLogado.dataMatricula || '-');
     setText('perfilObjetivo', alunoLogado.objetivo || '-');
     setText('perfilTelefone', alunoLogado.telefone || '-');
-}
-
-function setText(id, txt) { const el = document.getElementById(id); if (el) el.textContent = txt; }
-function setHTML(id, h) { const el = document.getElementById(id); if (el) el.innerHTML = h; }
-
-function classeStatus(st) {
-    const map = { 'Em Dia': 'badge-green', 'Pendente': 'badge-yellow', 'Vencido': 'badge-red', 'Atrasado': 'badge-darkred' };
-    return map[st] || 'badge-gold';
-}
-
-function formatarData(iso) {
-    if (!iso) return '-';
-    const [y, m, d] = iso.split('-');
-    return d + '/' + m + '/' + y;
 }
 
 function trocarFoto(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 1 * 1024 * 1024) {
-        toast('❌ Foto muito grande! Máximo 1MB', true);
-        e.target.value = '';
-        return;
-    }
-    if (!file.type.startsWith('image/')) {
-        toast('❌ Selecione um arquivo de imagem', true);
-        return;
-    }
+    if (file.size > 1 * 1024 * 1024) { toast('❌ Foto muito grande! Máximo 1MB', true); e.target.value = ''; return; }
+    if (!file.type.startsWith('image/')) { toast('❌ Selecione uma imagem', true); return; }
     const reader = new FileReader();
     reader.onload = ev => {
         alunoLogado.foto = ev.target.result;
-        salvarLocal();
+        salvarOverrideLocal(alunoLogado.id, { foto: ev.target.result });
         carregarPerfil();
         toast('✅ Foto atualizada!');
     };
@@ -243,10 +261,10 @@ function trocarSenha(e) {
     const confirma = document.getElementById('senhaConfirma')?.value || '';
     if (atual !== alunoLogado.senha) { toast('❌ Senha atual incorreta', true); return false; }
     if (nova !== confirma) { toast('❌ As senhas novas não conferem', true); return false; }
-    if (nova.length < 4) { toast('❌ Nova senha deve ter pelo menos 4 caracteres', true); return false; }
+    if (nova.length < 4) { toast('❌ Mínimo 4 caracteres', true); return false; }
     alunoLogado.senha = nova;
-    salvarLocal();
-    toast('✅ Senha alterada com sucesso!');
+    salvarOverrideLocal(alunoLogado.id, { senha: nova });
+    toast('✅ Senha alterada!');
     e.target.reset();
     return false;
 }
@@ -255,10 +273,9 @@ function trocarSenha(e) {
 // CHAMADOS
 // ============================================
 function carregarChamados() {
-    if (!alunoLogado.chamados) alunoLogado.chamados = [];
     const div = document.getElementById('listaChamados');
     if (!div) return;
-    if (alunoLogado.chamados.length === 0) {
+    if (!alunoLogado.chamados || alunoLogado.chamados.length === 0) {
         div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhum chamado aberto ainda.</p>';
         return;
     }
@@ -275,9 +292,6 @@ function carregarChamados() {
             <div class="chat-container" style="height:200px;">
                 <div class="chat-messages">
                     <div class="msg msg-me">${escapeHtml(c.mensagem)}<div class="msg-time">${formatarData(c.data)}</div></div>
-                    ${(c.respostas || []).map(r => `
-                        <div class="msg msg-them">${escapeHtml(r.texto)}<div class="msg-time">${formatarData(r.data)} • Gestão</div></div>
-                    `).join('')}
                 </div>
             </div>
         </div>
@@ -296,7 +310,7 @@ function abrirChamado(e) {
         status: 'Aberto',
         respostas: []
     });
-    salvarLocal();
+    saveLocalRecord(alunoLogado.id, 'chamados', alunoLogado.chamados);
     carregarChamados();
     toast('✅ Chamado aberto! A gestão recebeu por e-mail.');
     e.target.reset();
@@ -306,7 +320,7 @@ function abrirChamado(e) {
 function excluirChamado(id) {
     if (!confirm('Excluir este chamado?')) return;
     alunoLogado.chamados = alunoLogado.chamados.filter(c => c.id !== id);
-    salvarLocal();
+    saveLocalRecord(alunoLogado.id, 'chamados', alunoLogado.chamados);
     carregarChamados();
     toast('🗑️ Chamado excluído');
 }
@@ -319,17 +333,19 @@ function carregarAvaliacoes() {
     const div = document.getElementById('listaAvaliacoes');
     if (!div) return;
     if (alunoLogado.evaluations.length === 0) {
-        div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhuma avaliação cadastrada.</p>';
+        div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhuma avaliação cadastrada. A gestão pode adicionar a primeira pra você.</p>';
         return;
     }
     const avs = [...alunoLogado.evaluations].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-    div.innerHTML = avs.map(a => `
+    div.innerHTML = avs.map(a => {
+        const aId = a.id;
+        return `
         <div class="avaliacao-item">
             <div class="data">
                 <span>📅 ${formatarData(a.date)}</span>
                 <div class="avaliacao-actions">
-                    <button class="btn btn-outline btn-sm" onclick="editarAvaliacao(${a.id})">✏️ Editar</button>
-                    <button class="btn btn-danger btn-sm" onclick="excluirAvaliacao(${a.id})">🗑️</button>
+                    <button class="btn btn-outline btn-sm" onclick="editarAvaliacao(${aId})">✏️ Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="excluirAvaliacao(${aId})">🗑️</button>
                 </div>
             </div>
             <div class="eval-display-grid">
@@ -345,15 +361,14 @@ function carregarAvaliacoes() {
                 ${a.braco != null ? `<div class="eval-data-item"><b>Braço</b><span>${a.braco}cm</span></div>` : ''}
                 ${a.visceral != null ? `<div class="eval-data-item"><b>Visceral</b><span>${a.visceral}</span></div>` : ''}
                 ${a.basal != null ? `<div class="eval-data-item"><b>Metab. Basal</b><span>${a.basal}</span></div>` : ''}
-                ${a.idade != null ? `<div class="eval-data-item"><b>Idade Metab.</b><span>${a.idade}</span></div>` : ''}
+                ${a.idade != null ? `<div class="eval-data-item"><b>Idade Metab.</b><span>${a.idade}</span></div></div>` : ''}
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 function salvarAvaliacao(e) {
     if (e && e.preventDefault) e.preventDefault();
-    console.log('[AGF] salvarAvaliacao disparado');
     if (!alunoLogado) { toast('❌ Faça login novamente', true); return false; }
     if (!alunoLogado.evaluations) alunoLogado.evaluations = [];
 
@@ -391,11 +406,14 @@ function salvarAvaliacao(e) {
     } else {
         data.id = Date.now();
         alunoLogado.evaluations.push(data);
-        toast('✅ Avaliação salva! A gestão recebeu a atualização.');
+        toast('✅ Avaliação salva!');
     }
 
-    console.log('[AGF] Avaliações:', alunoLogado.evaluations.length);
-    salvarLocal();
+    // Persiste no localStorage (como backup - voltara pra gestao via sincronizacao)
+    saveLocalRecord(alunoLogado.id, 'evaluations', alunoLogado.evaluations);
+    // Aplica override no aluno logado em memoria
+    salvarOverrideLocal(alunoLogado.id, { evaluations: alunoLogado.evaluations });
+
     carregarAvaliacoes();
     e.target.reset();
     return false;
@@ -432,37 +450,78 @@ function cancelarEdicaoAvaliacao() {
     const tt = document.getElementById('avFormTitulo'); if (tt) tt.textContent = 'Adicionar avaliação';
     const sb = document.getElementById('avSubmitBtn'); if (sb) sb.textContent = '💾 Salvar avaliação';
     const cb = document.getElementById('avCancelarBtn'); if (cb) cb.classList.add('hidden');
-    const form = document.querySelector('#avaliacao form');
-    if (form) form.reset();
+    document.querySelector('#avaliacao form')?.reset();
 }
 
 function excluirAvaliacao(id) {
     if (!confirm('Excluir esta avaliação?')) return;
     alunoLogado.evaluations = alunoLogado.evaluations.filter(a => a.id !== id);
-    salvarLocal();
+    saveLocalRecord(alunoLogado.id, 'evaluations', alunoLogado.evaluations);
+    salvarOverrideLocal(alunoLogado.id, { evaluations: alunoLogado.evaluations });
     carregarAvaliacoes();
     toast('🗑️ Avaliação excluída');
 }
 
 // ============================================
-// GERADOR DE TREINO
+// SINCRONIZACAO: enviar alteracoes pra gestao
+// ============================================
+async function sincronizarGestao() {
+    if (!alunoLogado) return;
+    toast('📤 Gerando dados pra gestão...');
+
+    // Pega avaliacoes mais recentes (do override local)
+    const ovr = JSON.parse(localStorage.getItem(LS_OVERRIDES) || '{}');
+    const myOverrides = ovr[alunoLogado.id] || {};
+
+    // Monta um JSON com a avaliacao mais recente no formato da gestao
+    const latest = alunoLogado.evaluations && alunoLogado.evaluations.length
+        ? alunoLogado.evaluations.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
+        : null;
+
+    if (!latest) {
+        toast('❌ Nenhuma avaliação pra sincronizar', true);
+        return;
+    }
+
+    // Formato JSON pronto pra colar no aroeira_data.json
+    const novo = {
+        ...gestaoData,
+        students: gestaoData.students.map(s => {
+            if (String(s.id) !== String(alunoLogado.id)) return s;
+            return { ...s, evaluations: alunoLogado.evaluations };
+        }),
+        lastUpdate: new Date().toISOString()
+    };
+    const json = JSON.stringify(novo, null, 2);
+
+    // Copia pro clipboard
+    try {
+        await navigator.clipboard.writeText(json);
+        toast('✅ JSON copiado! Cole no arquivo aroeira_data.json e dê commit no GitHub.');
+    } catch (e) {
+        // Fallback: abre modal com o JSON
+        document.getElementById('syncJsonText').value = json;
+        openModal('syncModal');
+        toast('📋 Copie o JSON abaixo e cole no aroeira_data.json da gestão.');
+    }
+}
+
+// ============================================
+// TREINOS
 // ============================================
 function selecionarOpcao(el, campo, valor) {
     el.parentElement.querySelectorAll('.opcao').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
     respostasFiltro[campo] = valor;
-    console.log('[AGF] Resposta:', campo, '=', valor);
 }
 
 function gerarTreino() {
-    console.log('[AGF] gerarTreino disparado. Filtros:', respostasFiltro);
     const f = respostasFiltro;
     if (!f.experiencia || !f.objetivo || !f.frequencia || !f.grupo || !f.genero) {
         toast('❌ Responda todas as perguntas!', true);
         return;
     }
     if (!alunoLogado) { toast('❌ Faça login novamente', true); return; }
-    if (!alunoLogado.treinos) alunoLogado.treinos = [];
 
     f.dataGeracao = new Date().toISOString().split('T')[0];
     const treino = montarTreino(f);
@@ -473,8 +532,7 @@ function gerarTreino() {
         exercicios: treino
     });
 
-    console.log('[AGF] Treino salvo. Total:', alunoLogado.treinos.length);
-    salvarLocal();
+    saveLocalRecord(alunoLogado.id, 'treinos', alunoLogado.treinos);
 
     document.getElementById('filtrosTreino')?.classList.add('hidden');
     document.getElementById('resultadoTreino')?.classList.remove('hidden');
@@ -484,12 +542,11 @@ function gerarTreino() {
 }
 
 function montarTreino(f) {
-    const ex = dados.exercicios || {};
+    // O catálogo de exercicios fica embutido no client (vem de um JSON estatico)
+    const ex = (typeof EXERCICIOS_CATALOGO !== 'undefined') ? EXERCICIOS_CATALOGO : {};
     const grupo = f.grupo;
     let exercicios = [];
-    try {
-        exercicios = JSON.parse(JSON.stringify(ex[grupo] || []));
-    } catch (e) { exercicios = []; }
+    try { exercicios = JSON.parse(JSON.stringify(ex[grupo] || [])); } catch (e) { exercicios = []; }
 
     if (f.experiencia === 'iniciante') {
         exercicios = exercicios.slice(0, 4);
@@ -519,7 +576,7 @@ function renderizarTreino(exercicios, f) {
         iniciante: '🆕 Iniciante', intermediario: '🔄 Intermediário', avancado: '💪 Avançado'
     };
 
-    let html = `
+    const html = `
         <div class="card">
             <div class="card-header"><h3>🎯 Treino de ${grupoNomes[f.grupo] || f.grupo}</h3></div>
             <div class="info-row"><strong>Experiência:</strong> <span>${expTxt[f.experiencia] || f.experiencia}</span></div>
@@ -543,7 +600,6 @@ function renderizarTreino(exercicios, f) {
         </div>
         <button class="btn btn-outline btn-block" onclick="novoTreino()">🔄 Gerar treino de outro dia</button>
     `;
-
     const div = document.getElementById('resultadoTreino');
     if (div) div.innerHTML = html;
 }
@@ -557,17 +613,13 @@ function novoTreino() {
 }
 
 function carregarTreinos() {
-    if (!alunoLogado.treinos) alunoLogado.treinos = [];
     const div = document.getElementById('listaTreinos');
     if (!div) return;
-    if (alunoLogado.treinos.length === 0) {
+    if (!alunoLogado.treinos || alunoLogado.treinos.length === 0) {
         div.innerHTML = '<p class="text-muted text-center" style="padding:20px;">Nenhum treino gerado ainda.</p>';
         return;
     }
-    const grupoNomes = {
-        peito: 'Peito', costas: 'Costas', pernas: 'Pernas', gluteos: 'Glúteos',
-        ombros: 'Ombros', bracos: 'Braços', core: 'Core', cardio: 'Cardio'
-    };
+    const grupoNomes = { peito: 'Peito', costas: 'Costas', pernas: 'Pernas', gluteos: 'Glúteos', ombros: 'Ombros', bracos: 'Braços', core: 'Core', cardio: 'Cardio' };
     div.innerHTML = alunoLogado.treinos.map(t => `
         <div class="avaliacao-item">
             <div class="data">
@@ -596,27 +648,15 @@ function verTreino(id) {
 function excluirTreino(id) {
     if (!confirm('Excluir este treino do histórico?')) return;
     alunoLogado.treinos = alunoLogado.treinos.filter(t => t.id !== id);
-    salvarLocal();
+    saveLocalRecord(alunoLogado.id, 'treinos', alunoLogado.treinos);
     carregarTreinos();
     toast('🗑️ Treino excluído');
 }
 
-// ============================================
-// CONTATO
-// ============================================
+// === CONTATO ===
 function enviarContato(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const fd = new FormData(e.target);
-    console.log('[AGF] Contato:', Object.fromEntries(fd));
     toast('✅ Mensagem enviada! Responderemos em breve.');
     e.target.reset();
     return false;
-}
-
-// === UTILITÁRIOS ===
-function escapeHtml(t) {
-    if (t === null || t === undefined) return '';
-    return String(t)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
