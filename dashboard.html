@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Área do Aluno - Aroeira G Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div class="logo">AROEIRA <span>G FITNESS</span></div>
+    <div class="user-area">
+        <a href="https://wa.me/5516997902168" target="_blank" class="btn btn-wpp">💬</a>
+        <div class="avatar" id="headerAvatar" onclick="document.getElementById('fotoInput').click()">A</div>
+        <button class="btn btn-outline" onclick="logout()">Sair</button>
+    </div>
+</header>
+
+<input type="file" id="fotoInput" accept="image/*" style="display:none" onchange="trocarFoto(event)">
+
+<div class="container">
+
+    <div class="tabs">
+        <button class="tab active" onclick="abrirTab('perfil', this)">👤 Perfil</button>
+        <button class="tab" onclick="abrirTab('chamados', this)">💬 Chamados</button>
+        <button class="tab" onclick="abrirTab('avaliacao', this)">📊 Avaliação</button>
+        <button class="tab" onclick="abrirTab('treino', this)">🏋️ Treino</button>
+    </div>
+
+    <!-- PERFIL -->
+    <div id="perfil" class="tab-content active">
+        <div class="card">
+            <div class="flex" style="align-items:center; gap:20px; margin-bottom:20px;">
+                <div class="avatar" id="perfilAvatar" style="width:100px; height:100px; font-size:2rem;" onclick="document.getElementById('fotoInput').click()">A</div>
+                <div>
+                    <h2 class="text-gold" id="perfilNome">Aluno</h2>
+                    <p id="perfilEmail" style="opacity:0.7;">email@email.com</p>
+                    <p style="margin-top:8px; font-size:0.85rem; color:#d4af37;">📷 Clique na foto para alterar</p>
+                </div>
+            </div>
+
+            <h3>📋 Dados do Cadastro</h3>
+            <div class="info-row"><strong>Plano Atual:</strong> <span id="perfilPlano">-</span></div>
+            <div class="info-row"><strong>Valor:</strong> <span id="perfilValor">-</span></div>
+            <div class="info-row"><strong>Próximo Vencimento:</strong> <span id="perfilVencimento">-</span></div>
+            <div class="info-row"><strong>Status:</strong> <span id="perfilStatus">-</span></div>
+            <div class="info-row"><strong>Data de Matrícula:</strong> <span id="perfilMatricula">-</span></div>
+            <div class="info-row"><strong>Objetivo:</strong> <span id="perfilObjetivo">-</span></div>
+            <div class="info-row"><strong>Telefone:</strong> <span id="perfilTelefone">-</span></div>
+        </div>
+
+        <div class="card">
+            <h3>🔐 Trocar Senha</h3>
+            <form onsubmit="return trocarSenha(event)">
+                <div class="form-group">
+                    <label>Senha atual</label>
+                    <input type="password" id="senhaAtual" required>
+                </div>
+                <div class="form-group">
+                    <label>Nova senha</label>
+                    <input type="password" id="senhaNova" required minlength="4">
+                </div>
+                <div class="form-group">
+                    <label>Confirme a nova senha</label>
+                    <input type="password" id="senhaConfirma" required minlength="4">
+                </div>
+                <button type="submit" class="btn">🔄 Atualizar senha</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CHAMADOS -->
+    <div id="chamados" class="tab-content">
+        <div class="card">
+            <h3>💬 Abrir novo chamado</h3>
+            <form onsubmit="return abrirChamado(event)">
+                <div class="form-group">
+                    <label>Assunto</label>
+                    <input type="text" id="chamadoAssunto" required placeholder="Sobre o que você quer falar?">
+                </div>
+                <div class="form-group">
+                    <label>Mensagem</label>
+                    <textarea id="chamadoMensagem" required placeholder="Descreva sua dúvida ou solicitação..."></textarea>
+                </div>
+                <button type="submit" class="btn">📨 Abrir chamado</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>📋 Meus chamados</h3>
+            <div id="listaChamados">
+                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhum chamado aberto ainda.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AVALIAÇÃO FÍSICA -->
+    <div id="avaliacao" class="tab-content">
+        <div class="card">
+            <h3>📊 Adicionar nova avaliação</h3>
+            <form onsubmit="return adicionarAvaliacao(event)">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Data</label>
+                        <input type="date" id="avData" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Peso (kg)</label>
+                        <input type="number" step="0.1" id="avPeso" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Altura (m)</label>
+                        <input type="number" step="0.01" id="avAltura" required>
+                    </div>
+                    <div class="form-group">
+                        <label>% Gordura</label>
+                        <input type="number" step="0.1" id="avGordura" required>
+                    </div>
+                    <div class="form-group">
+                        <label>% Músculo</label>
+                        <input type="number" step="0.1" id="avMusculo" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Braço (cm)</label>
+                        <input type="number" step="0.1" id="avBraco" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Peito (cm)</label>
+                        <input type="number" step="0.1" id="avPeito" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cintura (cm)</label>
+                        <input type="number" step="0.1" id="avCintura" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Coxa (cm)</label>
+                        <input type="number" step="0.1" id="avCoxa" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn">💾 Salvar avaliação</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>📈 Histórico de avaliações</h3>
+            <div id="listaAvaliacoes">
+                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhuma avaliação cadastrada.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TREINO -->
+    <div id="treino" class="tab-content">
+        <div id="filtrosTreino">
+            <div class="filtro-card">
+                <h3>🎯 Vamos montar seu treino!</h3>
+                <p style="margin-bottom:20px;">Responda as perguntas abaixo pra gerar o treino perfeito pra você:</p>
+
+                <p class="text-gold mb-20"><strong>1. Você já treina ou é a primeira vez?</strong></p>
+                <div class="opcoes" data-pergunta="experiencia">
+                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'iniciante')">🆕 Primeira vez</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'intermediario')">🔄 Treino há alguns meses</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'avancado')">💪 Treino há mais de 1 ano</div>
+                </div>
+
+                <p class="text-gold mb-20"><strong>2. Qual seu objetivo principal?</strong></p>
+                <div class="opcoes" data-pergunta="objetivo">
+                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'hipertrofia')">🏋️ Ganho de massa</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'emagrecimento')">🔥 Emagrecer</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'resistencia')">⚡ Resistência</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'forca')">💪 Força</div>
+                </div>
+
+                <p class="text-gold mb-20"><strong>3. Quantas vezes por semana pretende treinar?</strong></p>
+                <div class="opcoes" data-pergunta="frequencia">
+                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 3)">3x por semana</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 4)">4x por semana</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 5)">5x por semana</div>
+                </div>
+
+                <p class="text-gold mb-20"><strong>4. Tem alguma lesão ou limitação?</strong></p>
+                <div class="form-group">
+                    <input type="text" id="limitacao" placeholder="Ex: dor no joelho, hérnia de disco, nenhuma...">
+                </div>
+
+                <p class="text-gold mb-20"><strong>5. Gênero</strong></p>
+                <div class="opcoes" data-pergunta="genero">
+                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'm')">Masculino</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'f')">Feminino</div>
+                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'o')">Outro / Prefiro não dizer</div>
+                </div>
+
+                <button class="btn mt-20" onclick="gerarTreino()">🔥 Gerar meu treino</button>
+            </div>
+        </div>
+
+        <div id="resultadoTreino" style="display:none;"></div>
+
+        <div class="card mt-20">
+            <h3>📚 Histórico de treinos</h3>
+            <div id="listaTreinos">
+                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhum treino gerado ainda.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
