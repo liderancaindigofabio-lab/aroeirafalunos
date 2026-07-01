@@ -1,0 +1,109 @@
+{
+  "academia": {
+    "nome": "Aroeira G Fitness",
+    "whatsapp": "5516997902168",
+    "email": "sacaroeiragfitness@gmail.com",
+    "instagram": "@aroeiragfitness",
+    "endereco": "Povoado de Aroeira, Pé de Serra - BA",
+    "horarios": {
+      "seg_sex": "06:00 - 20:00",
+      "sabado": "06:00 - 08:00",
+      "domingo": "Fechado"
+    },
+    "aparelhos": [
+      "Bicicleta",
+      "Esteira",
+      "Máquina de Glúteo",
+      "Abdutora e Adutora",
+      "Flexora e Extensora",
+      "Leg Press",
+      "Supino Reto",
+      "Peitoral Dorsal",
+      "Puxador conjugado",
+      "Banco Scott",
+      "Anilhas",
+      "Halteres",
+      "Colchonete",
+      "Step",
+      "Barra 180cm",
+      "Barra 150cm",
+      "Barra 120cm",
+      "Área de peso livre"
+    ]
+  },
+  "alunos": [
+    {
+      "id": 1,
+      "nome": "Aluno Teste",
+      "email": "meussegdores@gmail.com",
+      "senha": "123456",
+      "telefone": "16997902168",
+      "foto": "",
+      "plano": "Mensal",
+      "valor": "R$ 69,90",
+      "vencimento": "2026-07-15",
+      "status": "Em Dia",
+      "dataMatricula": "2025-01-15",
+      "objetivo": "Hipertrofia",
+      "avaliacoes": [
+        {
+          "data": "2026-05-10",
+          "peso": 78.5,
+          "altura": 1.75,
+          "imc": 25.6,
+          "gordura": 18.5,
+          "musculo": 35.2,
+          "braco": 38,
+          "peito": 105,
+          "cintura": 88,
+          "coxa": 58
+        }
+      ],
+      "treinos": [],
+      "chamados": []
+    }
+  ],
+  "exercicios": {
+    "peito": [
+      { "nome": "Supino Reto", "aparelho": "Supino Reto", "series": "4x10", "descanso": "60s" },
+      { "nome": "Supino Inclinado com Halteres", "aparelho": "Halteres + Banco", "series": "3x12", "descanso": "60s" },
+      { "nome": "Crucifixo na Máquina", "aparelho": "Peitoral Dorsal", "series": "3x12", "descanso": "45s" }
+    ],
+    "costas": [
+      { "nome": "Puxada Frontal", "aparelho": "Puxador conjugado", "series": "4x10", "descanso": "60s" },
+      { "nome": "Remada Curvada", "aparelho": "Barra 150cm", "series": "4x10", "descanso": "60s" },
+      { "nome": "Remada Unilateral", "aparelho": "Halteres", "series": "3x12", "descanso": "45s" }
+    ],
+    "pernas": [
+      { "nome": "Leg Press 45°", "aparelho": "Leg Press", "series": "4x12", "descanso": "90s" },
+      { "nome": "Cadeira Extensora", "aparelho": "Extensora", "series": "4x10", "descanso": "60s" },
+      { "nome": "Cadeira Flexora", "aparelho": "Flexora", "series": "4x10", "descanso": "60s" },
+      { "nome": "Agachamento Livre", "aparelho": "Barra 180cm", "series": "4x8", "descanso": "90s" }
+    ],
+    "gluteos": [
+      { "nome": "Cadeira Abdutora", "aparelho": "Abdutora", "series": "4x15", "descanso": "45s" },
+      { "nome": "Cadeira Adutora", "aparelho": "Adutora", "series": "4x15", "descanso": "45s" },
+      { "nome": "Elevação de Quadril", "aparelho": "Colchonete", "series": "4x15", "descanso": "45s" },
+      { "nome": "Glúteo na Máquina", "aparelho": "Máquina de Glúteo", "series": "4x12", "descanso": "60s" }
+    ],
+    "ombros": [
+      { "nome": "Desenvolvimento com Halteres", "aparelho": "Halteres", "series": "4x10", "descanso": "60s" },
+      { "nome": "Elevação Lateral", "aparelho": "Halteres", "series": "4x12", "descanso": "45s" },
+      { "nome": "Remada Alta", "aparelho": "Barra 120cm", "series": "3x12", "descanso": "60s" }
+    ],
+    "bracos": [
+      { "nome": "Rosca Direta", "aparelho": "Barra 120cm", "series": "4x10", "descanso": "60s" },
+      { "nome": "Rosca Martelo", "aparelho": "Halteres", "series": "3x12", "descanso": "45s" },
+      { "nome": "Tríceps na Polia", "aparelho": "Puxador conjugado", "series": "4x10", "descanso": "60s" },
+      { "nome": "Banco Scott", "aparelho": "Banco Scott", "series": "4x10", "descanso": "60s" }
+    ],
+    "cardio": [
+      { "nome": "Esteira", "aparelho": "Esteira", "series": "20 min", "descanso": "-" },
+      { "nome": "Bicicleta", "aparelho": "Bicicleta", "series": "20 min", "descanso": "-" }
+    ],
+    "core": [
+      { "nome": "Abdominal Supra", "aparelho": "Colchonete", "series": "4x20", "descanso": "30s" },
+      { "nome": "Prancha", "aparelho": "Colchonete", "series": "3x45s", "descanso": "30s" }
+    ]
+  }
+}
