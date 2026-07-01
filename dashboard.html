@@ -19,6 +19,7 @@
         </div>
         <div class="user-area">
             <div class="avatar" id="headerAvatar" onclick="document.getElementById('fotoInput').click()" title="Trocar foto">A</div>
+            <button class="btn btn-gold btn-sm" onclick="sincronizarGestao()" title="Enviar suas alterações pra gestão">📤 Sincronizar</button>
             <button class="btn btn-outline btn-sm" onclick="logout()">Sair</button>
         </div>
     </div>
@@ -225,6 +226,33 @@
 
 </div>
 
-<script src="app.js?v=3"></script>
+<!-- MODAL DE SINCRONIZACAO COM A GESTAO -->
+<div class="modal" id="syncModal">
+    <div class="modal-content" style="max-width: 600px;">
+        <button class="modal-close" onclick="closeModal('syncModal')">×</button>
+        <div class="modal-header">
+            <h2>📤 Sincronizar com a Gestão</h2>
+            <p>Cole o JSON abaixo no arquivo <code>aroeira_data.json</code> da gestão e dê commit no GitHub.</p>
+        </div>
+        <textarea id="syncJsonText" style="width:100%; height:300px; font-family:monospace; font-size:0.75rem; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-input); color:var(--text);"></textarea>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn btn-outline" onclick="copiarSyncJson()">📋 Copiar</button>
+            <button class="btn" onclick="fecharSync()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarSyncJson() {
+    const t = document.getElementById('syncJsonText');
+    t.select();
+    document.execCommand('copy');
+    toast('✅ JSON copiado! Cole no aroeira_data.json e dê commit.');
+}
+function fecharSync() { closeModal('syncModal'); }
+</script>
+
+<script src="exercicios.js?v=4"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>
