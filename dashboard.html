@@ -4,16 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Área do Aluno - Aroeira G Fitness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-    <div class="logo">AROEIRA <span>G FITNESS</span></div>
-    <div class="user-area">
-        <a href="https://wa.me/5516997902168" target="_blank" class="btn btn-wpp">💬</a>
-        <div class="avatar" id="headerAvatar" onclick="document.getElementById('fotoInput').click()">A</div>
-        <button class="btn btn-outline" onclick="logout()">Sair</button>
+    <div class="header-inner">
+        <div class="logo">
+            <div class="logo-mark">A</div>
+            <div class="logo-text">AROEIRA <span>G FITNESS</span></div>
+        </div>
+        <div class="user-area">
+            <div class="avatar" id="headerAvatar" onclick="document.getElementById('fotoInput').click()" title="Trocar foto">A</div>
+            <button class="btn btn-outline btn-sm" onclick="logout()">Sair</button>
+        </div>
     </div>
 </header>
 
@@ -31,39 +38,46 @@
     <!-- PERFIL -->
     <div id="perfil" class="tab-content active">
         <div class="card">
-            <div class="flex" style="align-items:center; gap:20px; margin-bottom:20px;">
-                <div class="avatar" id="perfilAvatar" style="width:100px; height:100px; font-size:2rem;" onclick="document.getElementById('fotoInput').click()">A</div>
+            <div class="flex" style="align-items:center; gap:20px; margin-bottom:24px;">
+                <div class="avatar avatar-lg" id="perfilAvatar" onclick="document.getElementById('fotoInput').click()">A</div>
                 <div>
-                    <h2 class="text-gold" id="perfilNome">Aluno</h2>
-                    <p id="perfilEmail" style="opacity:0.7;">email@email.com</p>
-                    <p style="margin-top:8px; font-size:0.85rem; color:#d4af37;">📷 Clique na foto para alterar</p>
+                    <h2 class="text-gold" id="perfilNome" style="font-size:1.6rem; margin-bottom:4px;">Aluno</h2>
+                    <p id="perfilEmail" class="text-muted">email@email.com</p>
+                    <p style="margin-top:8px; font-size:0.82rem; color:var(--gold); font-weight:600;">📷 Clique na foto para alterar</p>
                 </div>
             </div>
 
-            <h3>📋 Dados do Cadastro</h3>
-            <div class="info-row"><strong>Plano Atual:</strong> <span id="perfilPlano">-</span></div>
-            <div class="info-row"><strong>Valor:</strong> <span id="perfilValor">-</span></div>
-            <div class="info-row"><strong>Próximo Vencimento:</strong> <span id="perfilVencimento">-</span></div>
-            <div class="info-row"><strong>Status:</strong> <span id="perfilStatus">-</span></div>
+            <div class="stat-grid">
+                <div class="stat-box"><div class="label">Plano</div><div class="value" id="statPlano">-</div></div>
+                <div class="stat-box"><div class="label">Valor</div><div class="value" id="statValor">-</div></div>
+                <div class="stat-box"><div class="label">Vencimento</div><div class="value" id="statVencimento">-</div></div>
+                <div class="stat-box"><div class="label">Status</div><div class="value" id="statStatus">-</div></div>
+            </div>
+
+            <h3 style="color:var(--gold); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px; font-weight:700;">Dados Cadastrais</h3>
             <div class="info-row"><strong>Data de Matrícula:</strong> <span id="perfilMatricula">-</span></div>
             <div class="info-row"><strong>Objetivo:</strong> <span id="perfilObjetivo">-</span></div>
             <div class="info-row"><strong>Telefone:</strong> <span id="perfilTelefone">-</span></div>
         </div>
 
         <div class="card">
-            <h3>🔐 Trocar Senha</h3>
+            <div class="card-header">
+                <h3>🔐 Segurança</h3>
+            </div>
             <form onsubmit="return trocarSenha(event)">
                 <div class="form-group">
                     <label>Senha atual</label>
                     <input type="password" id="senhaAtual" required>
                 </div>
-                <div class="form-group">
-                    <label>Nova senha</label>
-                    <input type="password" id="senhaNova" required minlength="4">
-                </div>
-                <div class="form-group">
-                    <label>Confirme a nova senha</label>
-                    <input type="password" id="senhaConfirma" required minlength="4">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Nova senha</label>
+                        <input type="password" id="senhaNova" required minlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirme a nova senha</label>
+                        <input type="password" id="senhaConfirma" required minlength="4">
+                    </div>
                 </div>
                 <button type="submit" class="btn">🔄 Atualizar senha</button>
             </form>
@@ -73,7 +87,7 @@
     <!-- CHAMADOS -->
     <div id="chamados" class="tab-content">
         <div class="card">
-            <h3>💬 Abrir novo chamado</h3>
+            <div class="card-header"><h3>💬 Abrir novo chamado</h3></div>
             <form onsubmit="return abrirChamado(event)">
                 <div class="form-group">
                     <label>Assunto</label>
@@ -88,9 +102,11 @@
         </div>
 
         <div class="card">
-            <h3>📋 Meus chamados</h3>
+            <div class="card-header">
+                <h3>📋 Meus chamados</h3>
+            </div>
             <div id="listaChamados">
-                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhum chamado aberto ainda.</p>
+                <p class="text-muted text-center" style="padding:20px;">Nenhum chamado aberto ainda.</p>
             </div>
         </div>
     </div>
@@ -98,54 +114,38 @@
     <!-- AVALIAÇÃO FÍSICA -->
     <div id="avaliacao" class="tab-content">
         <div class="card">
-            <h3>📊 Adicionar nova avaliação</h3>
-            <form onsubmit="return adicionarAvaliacao(event)">
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Data</label>
-                        <input type="date" id="avData" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Peso (kg)</label>
-                        <input type="number" step="0.1" id="avPeso" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Altura (m)</label>
-                        <input type="number" step="0.01" id="avAltura" required>
-                    </div>
-                    <div class="form-group">
-                        <label>% Gordura</label>
-                        <input type="number" step="0.1" id="avGordura" required>
-                    </div>
-                    <div class="form-group">
-                        <label>% Músculo</label>
-                        <input type="number" step="0.1" id="avMusculo" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Braço (cm)</label>
-                        <input type="number" step="0.1" id="avBraco" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Peito (cm)</label>
-                        <input type="number" step="0.1" id="avPeito" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Cintura (cm)</label>
-                        <input type="number" step="0.1" id="avCintura" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Coxa (cm)</label>
-                        <input type="number" step="0.1" id="avCoxa" required>
-                    </div>
+            <div class="card-header">
+                <h3>📊 <span id="avFormTitulo">Adicionar avaliação</span></h3>
+                <button class="btn btn-outline btn-sm hidden" id="avCancelarBtn" onclick="cancelarEdicaoAvaliacao()">Cancelar</button>
+            </div>
+            <form onsubmit="return salvarAvaliacao(event)">
+                <input type="hidden" id="avId">
+                <div class="eval-grid">
+                    <div class="form-group"><label>Data</label><input type="date" id="av_date" required></div>
+                    <div class="form-group"><label>Peso (kg)</label><input type="number" id="av_peso" step="0.1" required></div>
+                    <div class="form-group"><label>Busto</label><input type="number" id="av_busto" step="0.1"></div>
+                    <div class="form-group"><label>Cintura</label><input type="number" id="av_cintura" step="0.1"></div>
+                    <div class="form-group"><label>Barriga</label><input type="number" id="av_barriga" step="0.1"></div>
+                    <div class="form-group"><label>Quadril</label><input type="number" id="av_quadril" step="0.1"></div>
+                    <div class="form-group"><label>Perna</label><input type="number" id="av_perna" step="0.1"></div>
+                    <div class="form-group"><label>Braço</label><input type="number" id="av_braco" step="0.1"></div>
+                    <div class="form-group"><label>IMC</label><input type="number" id="av_imc" step="0.1"></div>
+                    <div class="form-group"><label>% Gordura</label><input type="number" id="av_gordura" step="0.1"></div>
+                    <div class="form-group"><label>Massa Magra</label><input type="number" id="av_massa" step="0.1"></div>
+                    <div class="form-group"><label>Gord. Visceral</label><input type="number" id="av_visceral" step="0.1"></div>
+                    <div class="form-group"><label>Metab. Basal</label><input type="number" id="av_basal"></div>
+                    <div class="form-group"><label>Idade Metab.</label><input type="number" id="av_idade"></div>
                 </div>
-                <button type="submit" class="btn">💾 Salvar avaliação</button>
+                <button type="submit" class="btn" id="avSubmitBtn">💾 Salvar avaliação</button>
             </form>
         </div>
 
         <div class="card">
-            <h3>📈 Histórico de avaliações</h3>
+            <div class="card-header">
+                <h3>📈 Histórico de avaliações</h3>
+            </div>
             <div id="listaAvaliacoes">
-                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhuma avaliação cadastrada.</p>
+                <p class="text-muted text-center" style="padding:20px;">Nenhuma avaliação cadastrada.</p>
             </div>
         </div>
     </div>
@@ -154,53 +154,71 @@
     <div id="treino" class="tab-content">
         <div id="filtrosTreino">
             <div class="filtro-card">
-                <h3>🎯 Vamos montar seu treino!</h3>
-                <p style="margin-bottom:20px;">Responda as perguntas abaixo pra gerar o treino perfeito pra você:</p>
+                <h3>🎯 Monte seu treino</h3>
+                <p class="subtitle">Responda as perguntas e a gente gera um treino personalizado pra você com os aparelhos da academia.</p>
 
-                <p class="text-gold mb-20"><strong>1. Você já treina ou é a primeira vez?</strong></p>
-                <div class="opcoes" data-pergunta="experiencia">
-                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'iniciante')">🆕 Primeira vez</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'intermediario')">🔄 Treino há alguns meses</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'avancado')">💪 Treino há mais de 1 ano</div>
+                <div class="filtro-pergunta">
+                    <div class="titulo"><strong>1.</strong> Você já treina ou é a primeira vez?</div>
+                    <div class="opcoes" data-pergunta="experiencia">
+                        <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'iniciante')">🆕 Primeira vez</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'intermediario')">🔄 Treino há meses</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'experiencia', 'avancado')">💪 Treino há 1+ ano</div>
+                    </div>
                 </div>
 
-                <p class="text-gold mb-20"><strong>2. Qual seu objetivo principal?</strong></p>
-                <div class="opcoes" data-pergunta="objetivo">
-                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'hipertrofia')">🏋️ Ganho de massa</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'emagrecimento')">🔥 Emagrecer</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'resistencia')">⚡ Resistência</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'forca')">💪 Força</div>
+                <div class="filtro-pergunta">
+                    <div class="titulo"><strong>2.</strong> Qual seu objetivo principal?</div>
+                    <div class="opcoes" data-pergunta="objetivo">
+                        <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'hipertrofia')">🏋️ Ganho de massa</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'emagrecimento')">🔥 Emagrecer</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'resistencia')">⚡ Resistência</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'objetivo', 'forca')">💪 Força</div>
+                    </div>
                 </div>
 
-                <p class="text-gold mb-20"><strong>3. Quantas vezes por semana pretende treinar?</strong></p>
-                <div class="opcoes" data-pergunta="frequencia">
-                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 3)">3x por semana</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 4)">4x por semana</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 5)">5x por semana</div>
+                <div class="filtro-pergunta">
+                    <div class="titulo"><strong>3.</strong> Quantas vezes por semana vai treinar?</div>
+                    <div class="opcoes" data-pergunta="frequencia">
+                        <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 3)">3x por semana</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 4)">4x por semana</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'frequencia', 5)">5x por semana</div>
+                    </div>
                 </div>
 
-                <p class="text-gold mb-20"><strong>4. Tem alguma lesão ou limitação?</strong></p>
-                <div class="form-group">
-                    <input type="text" id="limitacao" placeholder="Ex: dor no joelho, hérnia de disco, nenhuma...">
+                <div class="filtro-pergunta">
+                    <div class="titulo"><strong>4.</strong> Qual grupo muscular você quer treinar HOJE?</div>
+                    <div class="opcoes" data-pergunta="grupo">
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'peito')">🏋️ Peito</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'costas')">🔙 Costas</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'pernas')">🦵 Pernas</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'gluteos')">🍑 Glúteos</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'ombros')">💪 Ombros</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'bracos')">💪 Braços</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'core')">🔥 Core/Abdômen</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'grupo', 'cardio')">❤️ Cardio</div>
+                    </div>
                 </div>
 
-                <p class="text-gold mb-20"><strong>5. Gênero</strong></p>
-                <div class="opcoes" data-pergunta="genero">
-                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'm')">Masculino</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'f')">Feminino</div>
-                    <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'o')">Outro / Prefiro não dizer</div>
+                <div class="filtro-pergunta">
+                    <div class="titulo"><strong>5.</strong> Gênero</div>
+                    <div class="opcoes" data-pergunta="genero">
+                        <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'm')">Masculino</div>
+                        <div class="opcao" onclick="selecionarOpcao(this, 'genero', 'f')">Feminino</div>
+                    </div>
                 </div>
 
-                <button class="btn mt-20" onclick="gerarTreino()">🔥 Gerar meu treino</button>
+                <button class="btn mt-20" onclick="gerarTreino()">🔥 Gerar treino de hoje</button>
             </div>
         </div>
 
-        <div id="resultadoTreino" style="display:none;"></div>
+        <div id="resultadoTreino" class="hidden"></div>
 
         <div class="card mt-20">
-            <h3>📚 Histórico de treinos</h3>
+            <div class="card-header">
+                <h3>📚 Histórico de treinos</h3>
+            </div>
             <div id="listaTreinos">
-                <p style="opacity:0.5; text-align:center; padding:20px;">Nenhum treino gerado ainda.</p>
+                <p class="text-muted text-center" style="padding:20px;">Nenhum treino gerado ainda.</p>
             </div>
         </div>
     </div>
